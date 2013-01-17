@@ -1,34 +1,39 @@
 <?php
-
-$ccKey='';
-$ccSecret= base64_encode(sha1('',true));
-$t;
-$ts;
+//Enter your MX Merchant username here between the apostrophes
+$consumerKey='';
+//Enter your MX Merchant password here between the apostrophes
+$consumerSecret= base64_encode(sha1('',true));
+$token;
+$tokenSecret;
 
 $links=array(
     'request'=> array('https://test.api.mxmerchant.com/v1/OAuth/1A/RequestToken',"POST"),
     'access'=> array('https://test.api.mxmerchant.com/v1/OAuth/1A/AccessToken', "POST"),
     'payment'=>array('https://test.api.mxmerchant.com/v1/payment', "POST"),
+    'getPayment'=>array('https://test.api.mxmerchant.com/v1/payment/...', "GET"),
+    'putPayment'=>array('https://test.api.mxmerchant.com/v1/payment/...', "PUT"),
+    'getAllPayment'=>array('https://test.api.mxmerchant.com/v1/payment', "GET"),
     'paymentOrder' =>array('https://test.api.mxmerchant.com/v1/order/.../payment', "POST"),
-    'searchCust'=> array('https://test.api.mxmerchant.com/v1/customer',"GET")
+    'searchCust'=> array('https://test.api.mxmerchant.com/v1/customer',"GET"),
+    'createOrder'=> array('https://test.api.mxmerchant.com/v1/order',"POST"),
+    'createCust'=> array('https://test.api.mxmerchant.com/v1/customer',"POST")
     );
+
+$params = array(
+  'oauth_consumer_key'=>$consumerKey,
+  'oauth_nonce'=>sha1(microtime()),
+  'oauth_signature_method'=>'HMAC-SHA1',
+  'oauth_timestamp'=> time(),
+  'oauth_version'=>'1.0'
+);
 
 function urlencode_oauth($str) {
   return
     str_replace('+',' ',str_replace('%7E','~',rawurlencode($str)));
   }
   
-  function startProcess($ccKey,$ccSecret,$url){
+function startProcess($consumerKey,$consumerSecret,$link,$method,$params){
       
- $params = array(
-  'oauth_consumer_key'=>$ccKey,
-  'oauth_nonce'=>sha1(microtime()),
-  'oauth_signature_method'=>'HMAC-SHA1',
-  'oauth_timestamp'=> time(),
-  'oauth_version'=>'1.0'
-);     
-
-// sort parameters according to ascending order of key
 ksort($params);
 
 // prepare URL-encoded query string
@@ -36,16 +41,17 @@ $q = array();
 foreach ($params as $key=>$value) {
   $q[] = urlencode_oauth($key).'='.urlencode_oauth($value);
 }
+
 $q = implode('&',$q);
 $parts = array(
-  "POST",
-  urlencode_oauth($url),
+  $method,
+  urlencode_oauth($link),
   urlencode_oauth($q)
 );
 $base_string = implode('&',$parts);
 
-$key1 = urlencode_oauth($ccSecret) . '&';
-$signature = base64_encode(hash_hmac('sha1',$base_string,$key1,true));
+$key = urlencode_oauth($consumerSecret) . '&';
+$signature = base64_encode(hash_hmac('sha1',$base_string,$key,true));
 
 $params['oauth_signature'] = $signature;
 $str = array();
@@ -64,10 +70,8 @@ $headers = array(
 );
 
     $options = array(CURLOPT_HTTPHEADER => $headers, //use our authorization 
-                           //CURLOPT_HEADER => false, //don't retrieve the header back from Twitter
-                           CURLOPT_URL => $url, //the URI we're sending the request to
+                           CURLOPT_URL => $link, //the URI we're sending the request to
                            CURLOPT_POST => true, //this is going to be a POST - required
-                           //CURLOPT_POSTFIELDS => $params,    
                            CURLOPT_RETURNTRANSFER => true, //return content as a string, don't echo out directly
                            CURLOPT_SSL_VERIFYPEER => false); //don't verify SSL certificate, just do it
 
@@ -79,19 +83,9 @@ $headers = array(
 
   }
   
-  
-
-function getAccessToken($ccKey,$ccSecret,$maltToke,$maltTokeSec,$l){
+function getAccessToken($consumerKey,$consumerSecret,$token,$tokenSecret,$link,$method,$params){
     
-    $params = array(
-  'oauth_consumer_key'=>$ccKey,
-  'oauth_nonce'=>sha1(microtime()),
-  'oauth_signature_method'=>'HMAC-SHA1',
-  'oauth_timestamp'=> time(),
-  'oauth_version'=>'1.0'
-);
-
-$params['oauth_token']=$maltToke;
+ $params['oauth_token']=$token;
  
 ksort($params);
 
@@ -102,13 +96,13 @@ foreach ($params as $key=>$value) {
 }
 $q = implode('&',$q);
 $parts = array(
-  "POST",
-  urlencode_oauth($l),
+  $method,
+  urlencode_oauth($link),
   urlencode_oauth($q)
 );
 $base_string = implode('&',$parts);
 
-$key = urlencode_oauth($ccSecret).'&'.urlencode_oauth($maltTokeSec);
+$key = urlencode_oauth($consumerSecret).'&'.urlencode_oauth($tokenSecret);
 $signature = base64_encode(hash_hmac('sha1',$base_string,$key,true));
 
 $params['oauth_signature'] = $signature;
@@ -128,10 +122,8 @@ $headers = array(
 );
 
     $options = array(CURLOPT_HTTPHEADER => $headers, //use our authorization 
-                           //CURLOPT_HEADER => false, 
-                           CURLOPT_URL => $l, //the URI we're sending the request to
+                           CURLOPT_URL => $link, //the URI we're sending the request to
                            CURLOPT_POST => true, //this is going to be a POST - required
-                           //CURLOPT_POSTFIELDS => $params,    
                            CURLOPT_RETURNTRANSFER => true, //return content as a string, don't echo out directly
                            CURLOPT_SSL_VERIFYPEER => false); //don't verify SSL certificate, just do it
  
@@ -142,11 +134,12 @@ $headers = array(
     return $response;       
 }
 
-parse_str(startProcess($ccKey, $ccSecret,$links['request'][0],$links['request'][1]),$malt);
- parse_str(getAccessToken($ccKey, $ccSecret, $malt['oauth_token'],$malt['oauth_token_secret'],$links['access'][0],$links['access'][1]),$data);
+parse_str(startProcess($consumerKey, $consumerSecret,$links['request'][0],$links['request'][1],$params),$initCall);
+parse_str(getAccessToken($consumerKey, $consumerSecret, $initCall['oauth_token'],$initCall['oauth_token_secret'],$links['access'][0],$links['access'][1],$params),$data);
  
- $t=$data['oauth_token'];
- $ts=$data['oauth_token_secret'];
- echo "This is your OAuth Access Token:".$t."<br />";
- echo "This is your OAuth Token Secret:".$ts;
+ $token=$data['oauth_token'];
+ $tokenSecret=$data['oauth_token_secret'];
+ echo $token,$tokenSecret;
+ 
+ 
 ?>
