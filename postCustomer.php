@@ -1,6 +1,6 @@
 <?php
 
-require 'multTokeSend.php';
+require 'multToke.php';
 
 function createCustomer($consumerSecret,$link, $method,$token,$tokenSecret,$params){
     
