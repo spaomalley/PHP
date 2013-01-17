@@ -1,108 +1,100 @@
 <?php
-require 'multToke.php';
-define('CONSUMER_KEY', '');
-$conSec=base64_encode(sha1('',true));
 
-//URL encoding per RFC standard
-function urlencode_oauth($str) {
-  return
-    str_replace('+',' ',str_replace('%7E','~',rawurlencode($str)));
-}
+require 'multTokeSend.php';
 
-
-$url='https://test.api.mxmerchant.com/v1/customer';
-$params = array(
+function createCustomer($consumerSecret,$link, $method,$token,$tokenSecret,$params){
     
-  'oauth_token'=>$t,
-  'oauth_consumer_key'=>CONSUMER_KEY,
-  'oauth_nonce'=>sha1(microtime()),
-  'oauth_signature_method'=>'HMAC-SHA1',
-  'oauth_timestamp'=> time(),  
-  'oauth_version'=>'1.0'
-);
+    $params['oauth_token']=$token;
 
-// sort parameters according to ascending order of key
-ksort($params);
+    ksort($params);
 
-// prepare URL-encoded query string
-$q = array();
-foreach ($params as $key=>$value) {
-  $q[] = urlencode_oauth($key).'='.urlencode_oauth($value);
-}
-$q = implode('&',$q);+
+    $q = array();
+    foreach ($params as $key=>$value) {
+      $q[] = urlencode_oauth($key).'='.urlencode_oauth($value);
+    }
+    $q = implode('&',$q);
 
-/*
- * Get your 3 parts ready for generating your basestring
- */
-$parts = array(
-  'POST',
-  urlencode_oauth($url),
-  urlencode_oauth($q)
-);
-//Concatenate with &
-$base_string = implode('&',$parts);
-/*
- * Currently we have no tokens, so our key to our signature will just be our consumer secret concatenated with   &
- */
-$key = urlencode_oauth($conSec) . '&'.  urlencode_oauth($ts);
+    $parts = array(
+        $method,
+        urlencode_oauth($link),
+        urlencode_oauth($q)
+    );
+    $base_string = implode('&',$parts);
 
-/*
- * implement your key into the Sha1-HMAC hash of you basestring. Then base-64 encode this.
- * 
- */
-$signature = base64_encode(hash_hmac('sha1',$base_string,$key,true));
+    $key = urlencode_oauth($consumerSecret) . '&'.  urlencode_oauth($tokenSecret);
 
-//Append the signature to your array
-$params['oauth_signature'] = $signature;
-$str = array();
-//Re-URL encode all your values including the signature this time
-foreach ($params as $k=>$value) {
-  $str[] = $k . '="'.urlencode_oauth($value).'"';
-}
 
-/*
- * separate these values with a comma followed by NO spaces
- * 
- */
-$str = implode(',',$str);
+    $signature = base64_encode(hash_hmac('sha1',$base_string,$key,true));
 
-$info = json_encode(array(
-
-"alias"=>"Kumar",
-"note"=>"Hello, my name is Kumar"
+    $params['oauth_signature'] = $signature;
+    $str = array();
     
-));
+    foreach ($params as $k=>$value) {
+        $str[] = $k . '="'.urlencode_oauth($value).'"';
+    }
+
+    $str = implode(',',$str);
+
+    $info = array(
+
+       "alias"=>"Craig",
+      "number"=>"1",
+        "email"=>"Sean.OMalley@pps.io",
+        "isLoyaltyEnrolled"=>true,
+        "addresses"=>array(array(
+  		"addressLine1"=>"123 4th St",
+			"city"=>"Alpharetta",
+			"state"=>"",
+			"zip"=>"30303",
+			"type"=>"Billing"
+			)),
+        "receiveEmailPromotions"=>true,
+        "receiveCellPhonePromotions"=>false
+       );
 
 //Create Authorization Header
-$headers = array(
-  'Authorization: OAuth '.$str,
-  'Content-Type: application/json',
-  'Content-Length: '.strlen($info)
-  //'Connection: close'
-);
+   $headers = array(
+     'Authorization: OAuth '.$str,
+    'Content-Type: application/json',
+   // 'Content-Length: '.strlen($info),
+    //'Connection: close'
+    );
 
 
-
-/*
- * Use cURL  to send request including header
- */
     $options = array(CURLOPT_HTTPHEADER => $headers, //use our authorization 
-                           CURLOPT_URL => $url,//'?'."merchantId=-1",
-                           //the URI we're sending the request to
+                           CURLOPT_HEADER=>true,
+                           CURLOPT_URL => $link,
                            CURLOPT_POST => true,
-                           CURLOPT_POSTFIELDS => $info ,//this is going to be a POST - required   
-                           //CURLOPT_RETURNTRANSFER => true, //return content as a string, don't echo out directly
+                           CURLOPT_POSTFIELDS => json_encode($info) ,//this is going to be a POST - required   
+                           CURLOPT_RETURNTRANSFER => true, //return content as a string, don't echo out directly
                            CURLOPT_SSL_VERIFYPEER => false //don't verify SSL certificate, just do it
                     ); 
     $ch = curl_init(); //get a channel
     curl_setopt_array($ch, $options); //set options
     $response = curl_exec($ch); //make the call
     curl_close($ch); //hang up
-    //echo $response;
     
-    
-    //The Location response header contains the ID of the created customer
-  
-   
+    $head = array();
 
+    $header_text = substr($response, 0, strpos($response, "\r\n\r\n"));
+
+    foreach (explode("\r\n", $header_text) as $i => $line)
+        if ($i === 0)
+            $head['http_code'] = $line;
+        else
+        {
+            list ($key, $value) = explode(': ', $line);
+
+            $head[$key] = $value;
+        }
+
+  return $head;
+    
+}    
+    $cust=createCustomer($consumerSecret,$links['createCust'][0], $links['createCust'][1],$token,$tokenSecret,$params);
+    $loc=$cust['Location'];
+    $pos =strrpos($loc, "/");
+    $custId = substr($loc,$pos+1); 
+    echo "This is the id of the customer you just created. ".$custId."<br />  You can submit this back to GET /customer/{id} to see the information you just submitted."
+         
 ?>
