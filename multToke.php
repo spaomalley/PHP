@@ -3,8 +3,7 @@
 $consumerKey='';
 //Enter your MX Merchant password here between the apostrophes
 $consumerSecret= base64_encode(sha1('',true));
-$token;
-$tokenSecret;
+
 
 $links=array(
     'request'=> array('https://test.api.mxmerchant.com/v1/OAuth/1A/RequestToken',"POST"),
@@ -139,7 +138,10 @@ parse_str(getAccessToken($consumerKey, $consumerSecret, $initCall['oauth_token']
  
  $token=$data['oauth_token'];
  $tokenSecret=$data['oauth_token_secret'];
- echo $token,$tokenSecret;
+ 
+ 
+ //echo "This is your oauth_token ".$token;
+ //echo "This is your oauth_token_secret".$tokenSecret;
  
  
 ?>
