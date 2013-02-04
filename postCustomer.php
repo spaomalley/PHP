@@ -1,6 +1,6 @@
 <?php
 
-require 'multToke.php';
+require 'multTokeSend.php';
 
 function createCustomer($consumerSecret,$link, $method,$token,$tokenSecret,$params){
     
@@ -42,7 +42,7 @@ function createCustomer($consumerSecret,$link, $method,$token,$tokenSecret,$para
         "email"=>"Sean.OMalley@pps.io",
         "isLoyaltyEnrolled"=>true,
         "addresses"=>array(array(
-  		"addressLine1"=>"123 4th St",
+			"addressLine1"=>"123 4th St",
 			"city"=>"Alpharetta",
 			"state"=>"",
 			"zip"=>"30303",
@@ -51,6 +51,8 @@ function createCustomer($consumerSecret,$link, $method,$token,$tokenSecret,$para
         "receiveEmailPromotions"=>true,
         "receiveCellPhonePromotions"=>false
        );
+    
+   
 
 //Create Authorization Header
    $headers = array(
@@ -88,13 +90,13 @@ function createCustomer($consumerSecret,$link, $method,$token,$tokenSecret,$para
             $head[$key] = $value;
         }
 
-       return $head;
+  return $head;
     
 }    
     $cust=createCustomer($consumerSecret,$links['createCust'][0], $links['createCust'][1],$token,$tokenSecret,$params);
     $loc=$cust['Location'];
     $pos =strrpos($loc, "/");
     $custId = substr($loc,$pos+1); 
-    echo "This is the id of the customer you just created. ".$custId."<br />  You can submit this back to GET /customer/{id} to see the information you just submitted."
+  echo "This is the id of the customer you just created. ".$custId."<br />  You can submit this back to GET /customer/{id} to see the information you just submitted."
          
 ?>
